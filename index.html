@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber Dash</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #03000c;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 45%, #17004d 0%, #08001d 40%, #020008 100%);
+  touch-action: none;
+}
+
+canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* HUD */
+
+#hud {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+
+  display: flex;
+  justify-content: space-between;
+
+  pointer-events: none;
+  z-index: 5;
+}
+
+.scoreBox {
+  padding: 10px 18px;
+
+  background: rgba(3, 10, 30, 0.75);
+
+  border: 1px solid #26f7ff;
+
+  box-shadow:
+    0 0 10px #26f7ff,
+    inset 0 0 10px rgba(38,247,255,.15);
+
+  color: white;
+
+  text-align: center;
+
+  letter-spacing: 2px;
+}
+
+.label {
+  font-size: 11px;
+  color: #8ffaff;
+}
+
+.number {
+  font-size: 30px;
+  font-weight: bold;
+
+  text-shadow:
+    0 0 8px #26f7ff,
+    0 0 20px #26f7ff;
+}
+
+/* Screens */
+
+.screen {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: rgba(2,0,12,.65);
+
+  backdrop-filter: blur(5px);
+
+  z-index: 10;
+}
+
+.card {
+  width: min(90%, 600px);
+
+  padding: 45px;
+
+  text-align: center;
+
+  background: rgba(7,2,30,.9);
+
+  border: 1px solid #ff28d7;
+
+  box-shadow:
+    0 0 25px #ff28d7,
+    inset 0 0 30px rgba(255,40,215,.08);
+}
+
+.tag {
+  color: #ff45df;
+
+  font-size: 13px;
+  font-weight: bold;
+
+  letter-spacing: 4px;
+
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-size: clamp(45px, 9vw, 85px);
+
+  font-style: italic;
+
+  color: white;
+
+  letter-spacing: 5px;
+
+  text-shadow:
+    0 0 5px #fff,
+    0 0 12px #26f7ff,
+    0 0 30px #ff28d7;
+}
+
+.subtitle {
+  margin: 15px 0 25px;
+
+  color: #b8efff;
+
+  line-height: 1.6;
+}
+
+button {
+  padding: 14px 28px;
+
+  border: 1px solid #26f7ff;
+
+  background: #07152d;
+
+  color: white;
+
+  font-size: 15px;
+
+  font-weight: bold;
+
+  letter-spacing: 2px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 0 12px #26f7ff;
+
+  transition: .2s;
+}
+
+button:hover {
+  transform: scale(1.05);
+
+  background: #102a4e;
+
+  box-shadow:
+    0 0 25px #26f7ff;
+}
+
+#gameOver {
+  display: none;
+}
+
+.smallText {
+  color: #83cddd;
+  margin-top: 18px;
+  font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+  <canvas id="canvas"></canvas>
+
+  <!-- HUD -->
+
+  <div id="hud">
+
+    <div class="scoreBox">
+      <div class="label">SCORE</div>
+      <div class="number" id="score">0</div>
+    </div>
+
+    <div class="scoreBox">
+      <div class="label">BEST</div>
+      <div class="number" id="best">0</div>
+    </div>
+
+  </div>
+
+  <!-- START SCREEN -->
+
+  <div class="screen" id="startScreen">
+
+    <div class="card">
+
+      <div class="tag">NEON FLIGHT // 01</div>
+
+      <h1>CYBER DASH</h1>
+
+      <p class="subtitle">
+        Fly your cyber drone through the neon gates.<br><br>
+
+        <b>SPACE</b> to fly<br>
+        <b>CLICK / TAP</b> to fly
+      </p>
+
+      <button onclick="startGame()">
+        START RUN
+      </button>
+
+      <div class="smallText">
+        SURVIVE. SCORE. UPGRADE.
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- GAME OVER -->
+
+  <div class="screen" id="gameOver">
+
+    <div class="card">
+
+      <div class="tag">SYSTEM FAILURE</div>
+
+      <h1>CRASHED</h1>
+
+      <p class="subtitle">
+        FINAL SCORE
+      </p>
+
+      <div class="number" id="finalScore">
+        0
+      </div>
+
+      <br>
+
+      <button onclick="startGame()">
+        REBOOT
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   CYBER DASH
+   ===================================================== */
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let width;
+let height;
+
+let playing = false;
+
+let score = 0;
+
+let best = Number(localStorage.getItem("cyberDashBest")) || 0;
+
+document.getElementById("best").textContent = best;
+
+
+/* =====================================================
+   RESIZE
+   ===================================================== */
+
+function resize() {
+
+  width = window.innerWidth;
+  height = window.innerHeight;
+
+  canvas.width = width;
+  canvas.height = height;
+
+}
+
+window.addEventListener("resize", resize);
+
+resize();
+
+
+/* =====================================================
+   PLAYER
+   ===================================================== */
+
+const player = {
+
+  x: 0.22,
+
+  y: 0.5,
+
+  velocity: 0,
+
+  radius: 22,
+
+  rotation: 0
+
+};
+
+
+/* =====================================================
+   WORLD
+   ===================================================== */
+
+let gates = [];
+
+let particles = [];
+
+let stars = [];
+
+let cityLines = [];
+
+let gameSpeed = 330;
+
+let spawnTimer = 0;
+
+let lastTime = 0;
+
+
+/* =====================================================
+   CREATE STARS
+   ===================================================== */
+
+function createStars() {
+
+  stars = [];
+
+  for (let i = 0; i < 140; i++) {
+
+    stars.push({
+
+      x: Math.random() * width,
+
+      y: Math.random() * height,
+
+      speed: 20 + Math.random() * 100,
+
+      size: Math.random() * 2 + 1
+
+    });
+
+  }
+
+}
+
+createStars();
+
+
+/* =====================================================
+   BOOST
+   ===================================================== */
+
+function boost() {
+
+  if (!playing) return;
+
+  player.velocity = -520;
+
+  for (let i = 0; i < 8; i++) {
+
+    particles.push({
+
+      x: player.x * width,
+
+      y: player.y * height,
+
+      vx: -80 - Math.random() * 150,
+
+      vy: (Math.random() - .5) * 100,
+
+      life: .5
+
+    });
+
+  }
+
+}
+
+
+/* =====================================================
+   CONTROLS
+   ===================================================== */
+
+window.addEventListener("keydown", function(event) {
+
+  if (event.code === "Space") {
+
+    event.preventDefault();
+
+    boost();
+
+  }
+
+});
+
+canvas.addEventListener("pointerdown", function(event) {
+
+  event.preventDefault();
+
+  boost();
+
+});
+
+
+/* =====================================================
+   START GAME
+   ===================================================== */
+
+function startGame() {
+
+  score = 0;
+
+  document.getElementById("score").textContent = "0";
+
+  player.y = .5;
+
+  player.velocity = 0;
+
+  player.rotation = 0;
+
+  gates = [];
+
+  particles = [];
+
+  gameSpeed = 330;
+
+  spawnTimer = 0;
+
+  playing = true;
+
+  document.getElementById("startScreen").style.display = "none";
+
+  document.getElementById("gameOver").style.display = "none";
+
+  lastTime = performance.now();
+
+  requestAnimationFrame(gameLoop);
+
+}
+
+
+/* =====================================================
+   GAME OVER
+   ===================================================== */
+
+function gameOver() {
+
+  if (!playing) return;
+
+  playing = false;
+
+  if (score > best) {
+
+    best = score;
+
+    localStorage.setItem("cyberDashBest", best);
+
+    document.getElementById("best").textContent = best;
+
+  }
+
+  document.getElementById("finalScore").textContent = score;
+
+  document.getElementById("gameOver").style.display = "flex";
+
+}
+
+
+/* =====================================================
+   CREATE GATE
+   ===================================================== */
+
+function createGate() {
+
+  const gap = Math.max(155, height * .25);
+
+  const margin = 70;
+
+  const center =
+    margin +
+    gap / 2 +
+    Math.random() *
+    (height - margin * 2 - gap);
+
+  gates.push({
+
+    x: width + 100,
+
+    width: 65,
+
+    center: center,
+
+    gap: gap,
+
+    passed: false
+
+  });
+
+}
+
+
+/* =====================================================
+   UPDATE
+   ===================================================== */
+
+function update(delta) {
+
+  /* Gravity */
+
+  player.velocity += 1300 * delta;
+
+  player.y +=
+    player.velocity * delta / height;
+
+  player.rotation =
+    Math.max(
+      -.6,
+      Math.min(
+        1,
+        player.velocity / 700
+      )
+    );
+
+
+  /* Spawn */
+
+  spawnTimer -= delta;
+
+  if (spawnTimer <= 0) {
+
+    createGate();
+
+    spawnTimer = 1.35;
+
+  }
+
+
+  /* Move gates */
+
+  for (const gate of gates) {
+
+    gate.x -= gameSpeed * delta;
+
+
+    /* Score */
+
+    if (
+      !gate.passed &&
+      gate.x + gate.width <
+      player.x * width
+    ) {
+
+      gate.passed = true;
+
+      score++;
+
+      document.getElementById("score")
+        .textContent = score;
+
+      gameSpeed += 6;
+
+    }
+
+
+    /* Collision */
+
+    const px = player.x * width;
+
+    const py = player.y * height;
+
+    const hitX =
+      px + player.radius > gate.x &&
+      px - player.radius <
+      gate.x + gate.width;
+
+    const topEnd =
+      gate.center - gate.gap / 2;
+
+    const bottomStart =
+      gate.center + gate.gap / 2;
+
+    const hitY =
+      py - player.radius < topEnd ||
+      py + player.radius > bottomStart;
+
+
+    if (hitX && hitY) {
+
+      gameOver();
+
+    }
+
+  }
+
+
+  gates =
+    gates.filter(
+      gate => gate.x > -150
+    );
+
+
+  /* World bounds */
+
+  if (
+    player.y < .02 ||
+    player.y > .98
+  ) {
+
+    gameOver();
+
+  }
+
+
+  /* Stars */
+
+  for (const star of stars) {
+
+    star.x -=
+      star.speed * delta;
+
+    if (star.x < 0) {
+
+      star.x = width;
+
+      star.y =
+        Math.random() * height;
+
+    }
+
+  }
+
+
+  /* Particles */
+
+  for (const particle of particles) {
+
+    particle.x +=
+      particle.vx * delta;
+
+    particle.y +=
+      particle.vy * delta;
+
+    particle.life -= delta;
+
+  }
+
+  particles =
+    particles.filter(
+      p => p.life > 0
+    );
+
+}
+
+
+/* =====================================================
+   DRAW BACKGROUND
+   ===================================================== */
+
+function drawBackground() {
+
+  const gradient =
+    ctx.createLinearGradient(
+      0,
+      0,
+      width,
+      height
+    );
+
+  gradient.addColorStop(
+    0,
+    "#080021"
+  );
+
+  gradient.addColorStop(
+    .5,
+    "#16002e"
+  );
+
+  gradient.addColorStop(
+    1,
+    "#020815"
+  );
+
+  ctx.fillStyle = gradient;
+
+  ctx.fillRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+
+  /* Stars */
+
+  for (const star of stars) {
+
+    ctx.fillStyle =
+      "rgba(90,240,255,.7)";
+
+    ctx.fillRect(
+      star.x,
+      star.y,
+      star.size,
+      star.size
+    );
+
+  }
+
+
+  /* Horizon */
+
+  const horizon =
+    height * .58;
+
+
+  /* Neon horizon */
+
+  ctx.save();
+
+  ctx.shadowBlur = 20;
+
+  ctx.shadowColor = "#ff2bd6";
+
+  ctx.strokeStyle = "#ff2bd6";
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    0,
+    horizon
+  );
+
+  ctx.lineTo(
+    width,
+    horizon
+  );
+
+  ctx.stroke();
+
+  ctx.restore();
+
+
+  /* Perspective grid */
+
+  ctx.save();
+
+  ctx.strokeStyle =
+    "rgba(35,240,255,.35)";
+
+  ctx.lineWidth = 1;
+
+
+  for (
+    let x = -width;
+    x <= width * 2;
+    x += 70
+  ) {
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      width / 2,
+      horizon
+    );
+
+    ctx.lineTo(
+      x,
+      height
+    );
+
+    ctx.stroke();
+
+  }
+
+
+  for (
+    let i = 0;
+    i < 15;
+    i++
+  ) {
+
+    const y =
+      horizon +
+      Math.pow(i / 15, 2) *
+      height *
+      .55;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      0,
+      y
+    );
+
+    ctx.lineTo(
+      width,
+      y
+    );
+
+    ctx.stroke();
+
+  }
+
+  ctx.restore();
+
+}
+
+
+/* =====================================================
+   DRAW GATES
+   ===================================================== */
+
+function drawGates() {
+
+  for (const gate of gates) {
+
+    const topHeight =
+      gate.center -
+      gate.gap / 2;
+
+    const bottomY =
+      gate.center +
+      gate.gap / 2;
+
+
+    /* TOP */
+
+    ctx.save();
+
+    ctx.shadowBlur = 30;
+
+    ctx.shadowColor =
+      "#ff25d7";
+
+    ctx.fillStyle =
+      "#160c39";
+
+    ctx.strokeStyle =
+      "#ff25d7";
+
+    ctx.lineWidth = 3;
+
+    ctx.fillRect(
+      gate.x,
+      0,
+      gate.width,
+      topHeight
+    );
+
+    ctx.strokeRect(
+      gate.x,
+      0,
+      gate.width,
+      topHeight
+    );
+
+    ctx.restore();
+
+
+    /* BOTTOM */
+
+    ctx.save();
+
+    ctx.shadowBlur = 30;
+
+    ctx.shadowColor =
+      "#20f5ff";
+
+    ctx.fillStyle =
+      "#07153a";
+
+    ctx.strokeStyle =
+      "#20f5ff";
+
+    ctx.lineWidth = 3;
+
+    ctx.fillRect(
+      gate.x,
+      bottomY,
+      gate.width,
+      height - bottomY
+    );
+
+    ctx.strokeRect(
+      gate.x,
+      bottomY,
+      gate.width,
+      height - bottomY
+    );
+
+    ctx.restore();
+
+
+    /* GLOW EDGES */
+
+    ctx.save();
+
+    ctx.shadowBlur = 18;
+
+    ctx.shadowColor = "#ffffff";
+
+    ctx.fillStyle = "#ffffff";
+
+    ctx.fillRect(
+      gate.x - 4,
+      topHeight - 3,
+      gate.width + 8,
+      4
+    );
+
+    ctx.fillRect(
+      gate.x - 4,
+      bottomY - 1,
+      gate.width + 8,
+      4
+    );
+
+    ctx.restore();
+
+  }
+
+}
+
+
+/* =====================================================
+   DRAW PLAYER
+   ===================================================== */
+
+function drawPlayer() {
+
+  const x =
+    player.x * width;
+
+  const y =
+    player.y * height;
+
+
+  ctx.save();
+
+  ctx.translate(
+    x,
+    y
+  );
+
+  ctx.rotate(
+    player.rotation
+  );
+
+
+  /* Glow */
+
+  ctx.shadowBlur = 30;
+
+  ctx.shadowColor =
+    "#20f5ff";
+
+
+  /* Main body */
+
+  ctx.fillStyle =
+    "#162a4a";
+
+  ctx.strokeStyle =
+    "#28f7ff";
+
+  ctx.lineWidth = 3;
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    -28,
+    3
+  );
+
+  ctx.lineTo(
+    -8,
+    -19
+  );
+
+  ctx.lineTo(
+    20,
+    -12
+  );
+
+  ctx.lineTo(
+    30,
+    2
+  );
+
+  ctx.lineTo(
+    12,
+    17
+  );
+
+  ctx.lineTo(
+    -15,
+    15
+  );
+
+  ctx.closePath();
+
+  ctx.fill();
+
+  ctx.stroke();
+
+
+  /* Wing */
+
+  ctx.shadowColor =
+    "#ff25d7";
+
+  ctx.fillStyle =
+    "#ff25d7";
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    -8,
+    8
+  );
+
+  ctx.lineTo(
+    -34,
+    24
+  );
+
+  ctx.lineTo(
+    -10,
+    17
+  );
+
+  ctx.closePath();
+
+  ctx.fill();
+
+
+  /* Cyber eye */
+
+  ctx.shadowColor =
+    "#20f5ff";
+
+  ctx.fillStyle =
+    "#bfffff";
+
+  ctx.fillRect(
+    3,
+    -7,
+    8,
+    4
+  );
+
+
+  /* Engine */
+
+  ctx.shadowColor =
+    "#ff25d7";
+
+  ctx.fillStyle =
+    "#ff25d7";
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    -28,
+    3
+  );
+
+  ctx.lineTo(
+    -45,
+    0
+  );
+
+  ctx.lineTo(
+    -28,
+    8
+  );
+
+  ctx.closePath();
+
+  ctx.fill();
+
+
+  ctx.restore();
+
+}
+
+
+/* =====================================================
+   DRAW PARTICLES
+   ===================================================== */
+
+function drawParticles() {
+
+  for (const p of particles) {
+
+    ctx.save();
+
+    ctx.globalAlpha =
+      Math.max(
+        0,
+        p.life * 2
+      );
+
+    ctx.fillStyle =
+      "#27f5ff";
+
+    ctx.shadowBlur = 15;
+
+    ctx.shadowColor =
+      "#27f5ff";
+
+    ctx.fillRect(
+      p.x,
+      p.y,
+      6,
+      3
+    );
+
+    ctx.restore();
+
+  }
+
+}
+
+
+/* =====================================================
+   MAIN DRAW
+   ===================================================== */
+
+function draw() {
+
+  drawBackground();
+
+  drawGates();
+
+  drawParticles();
+
+  drawPlayer();
+
+}
+
+
+/* =====================================================
+   GAME LOOP
+   ===================================================== */
+
+function gameLoop(time) {
+
+  if (!playing) return;
+
+  const delta =
+    Math.min(
+      (time - lastTime) / 1000,
+      .033
+    );
+
+  lastTime = time;
+
+  update(delta);
+
+  draw();
+
+  requestAnimationFrame(
+    gameLoop
+  );
+
+}
+
+
+/* Initial screen */
+
+draw();
+
+</script>
+
+</body>
+</html>
